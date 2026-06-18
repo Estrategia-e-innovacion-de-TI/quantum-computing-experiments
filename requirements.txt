@@ -4,3 +4,4 @@ qiskit-algorithms
 numpy 
 matplotlib 
 scipy
+pandas
