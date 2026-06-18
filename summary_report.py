@@ -115,6 +115,81 @@ def rolling_average(values, window):
     return promedios
 
 
+def analizar_convergencia_cuantica(resultados_mc, resultados_qmc, valor_referencia):
+    """
+    Analiza la convergencia de los métodos clásico y cuántico hacia un valor de referencia.
+    
+    Calcula para ambos métodos:
+    - Errores acumulativos a medida que procesa más muestras.
+    - Velocidad de convergencia comparativa.
+    - Punto de convergencia (donde el error se estabiliza bajo un umbral).
+    
+    Args:
+        resultados_mc: Lista de estimaciones del método clásico (float).
+        resultados_qmc: Lista de estimaciones del método cuántico (float).
+        valor_referencia: Valor verdadero/esperado para comparación (float).
+    
+    Returns:
+        dict: Contiene:
+            - errores_acumulados_mc: Errores absolutos acumulados de MC.
+            - errores_acumulados_qmc: Errores absolutos acumulados de QMC.
+            - promedio_final_mc: Estimación final del método clásico.
+            - promedio_final_qmc: Estimación final del método cuántico.
+            - convergencia_mejor: Cuál método converge más rápido ('MC', 'QMC' o 'equivalente').
+            - punto_convergencia_mc: Índice donde MC se estabiliza (o -1 si no converge).
+            - punto_convergencia_qmc: Índice donde QMC se estabiliza (o -1 si no converge).
+    
+    Raises:
+        ValueError: Si las listas tienen diferente longitud o están vacías.
+    """
+    mc = np.asarray(resultados_mc, dtype=float)
+    qmc = np.asarray(resultados_qmc, dtype=float)
+    
+    if mc.size == 0 or qmc.size == 0:
+        raise ValueError("Las listas de resultados no pueden estar vacías.")
+    
+    if mc.size != qmc.size:
+        raise ValueError("Las listas de resultados deben tener la misma longitud.")
+    
+    valor_ref = float(valor_referencia)
+    
+    # Calcular errores acumulativos como promedio móvil del error absoluto
+    errores_mc = np.abs(mc - valor_ref)
+    errores_qmc = np.abs(qmc - valor_ref)
+    
+    # Usar ventanas acumulativas para ver convergencia
+    errores_acumulados_mc = [np.mean(errores_mc[:i+1]) for i in range(len(errores_mc))]
+    errores_acumulados_qmc = [np.mean(errores_qmc[:i+1]) for i in range(len(errores_qmc))]
+    
+    # Determinar punto de convergencia (cuando el error < 5% del valor de referencia)
+    umbral_convergencia = abs(valor_ref) * 0.05
+    punto_conv_mc = next((i for i, e in enumerate(errores_acumulados_mc) if e < umbral_convergencia), -1)
+    punto_conv_qmc = next((i for i, e in enumerate(errores_acumulados_qmc) if e < umbral_convergencia), -1)
+    
+    # Comparar velocidad de convergencia
+    if punto_conv_qmc == -1 and punto_conv_mc == -1:
+        convergencia_mejor = "equivalente"
+    elif punto_conv_qmc == -1:
+        convergencia_mejor = "MC"
+    elif punto_conv_mc == -1:
+        convergencia_mejor = "QMC"
+    else:
+        convergencia_mejor = "QMC" if punto_conv_qmc < punto_conv_mc else "MC"
+    
+    promedio_final_mc = float(np.mean(mc))
+    promedio_final_qmc = float(np.mean(qmc))
+    
+    return {
+        "errores_acumulados_mc": errores_acumulados_mc,
+        "errores_acumulados_qmc": errores_acumulados_qmc,
+        "promedio_final_mc": promedio_final_mc,
+        "promedio_final_qmc": promedio_final_qmc,
+        "convergencia_mejor": convergencia_mejor,
+        "punto_convergencia_mc": punto_conv_mc,
+        "punto_convergencia_qmc": punto_conv_qmc,
+    }
+
+
 def imprimir_reporte(resultados_mc, resultados_qmc):
     """Imprime un reporte legible con el resumen de ambos conjuntos."""
     stats_mc = calcular_estadisticas(resultados_mc)
@@ -148,6 +223,17 @@ if __name__ == "__main__":
     promedios = rolling_average(datos, ventana)
     print(f"Datos originales: {datos}")
     print(f"Promedio móvil (ventana={ventana}): {[f'{p:.2f}' for p in promedios]}\n")
+    
+    print("--- Análisis de convergencia cuántica ---")
+    resultados_mc_conv = [0.50, 0.48, 0.49, 0.495, 0.492, 0.498, 0.501]
+    resultados_qmc_conv = [0.45, 0.495, 0.499, 0.5001, 0.5003, 0.4998, 0.5002]
+    valor_verdadero = 0.50
+    analisis = analizar_convergencia_cuantica(resultados_mc_conv, resultados_qmc_conv, valor_verdadero)
+    print(f"Método con mejor convergencia: {analisis['convergencia_mejor']}")
+    print(f"Estimación final MC: {analisis['promedio_final_mc']:.6f}")
+    print(f"Estimación final QMC: {analisis['promedio_final_qmc']:.6f}")
+    print(f"Punto de convergencia MC: índice {analisis['punto_convergencia_mc']}")
+    print(f"Punto de convergencia QMC: índice {analisis['punto_convergencia_qmc']}\n")
     
     print("--- Reporte completo ---")
     resultados_mc = [0.42, 0.51, 0.47, 0.50]
