@@ -1,7 +1,7 @@
-qiskit 
-qiskit-aer 
-qiskit-algorithms 
-numpy 
-matplotlib 
-scipy
-pandas
+qiskit>=1.2,<2.0
+qiskit-aer>=0.15,<1.0
+qiskit-algorithms>=0.3,<1.0
+numpy>=1.26,<2.0
+matplotlib>=3.8,<4.0
+scipy>=1.11,<2.0
+pandas>=2.2,<3.0
